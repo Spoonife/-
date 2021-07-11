@@ -1,0 +1,50 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include <dirent.h>
+#include <string.h>
+#include<io.h>
+
+void direntType(char filePath[255]) {
+	DIR* dir = nullptr;
+
+	struct dirent* entry;
+
+	dir = opendir(filePath);
+
+	if (dir == nullptr) {
+		printf("打开目录失败");
+
+		exit(0);
+
+	}
+	else {
+		while ((entry = readdir(dir)) != nullptr) {
+			printf("%s\n", entry->d_name);
+
+		}
+
+		closedir(dir);
+
+	}
+
+}
+
+//int main() {
+//	printf("请输入文件目录路径:");
+//
+//	char dirPath[255];
+//
+//	scanf("%s", dirPath);
+//
+//	printf("===========================\n");
+//
+//
+//	printf("\n\n通过dirent调用展示:\n");
+//
+//	printf("===========================\n");
+//
+//	direntType(dirPath);
+//
+//	return 0;
+//
+//}
