@@ -50,7 +50,23 @@ void FunGetFromFile(char FileName[]) {
 	}
 }
 
-void FunGetFromList(char Dir[]) {
+void FunGetFromList(char FilePath[]) {
+
+	DIR* dp = opendir(FilePath);
+	struct dirent* entry;
+	char** FileName;
+
+	if (dp) {
+		while ((entry = readdir(dp)) != nullptr) {
+			printf("%s\n", entry->d_name);
+			*FileName = entry->d_name;
+			
+		}
+	}
+	else {
+		printf("打开目录失败！\n");
+	}
+
 
 }
 
