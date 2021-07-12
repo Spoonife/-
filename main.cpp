@@ -3,6 +3,7 @@
 #include<iostream>
 #include"choose.cpp"
 #include"regex.h"
+#include"dirent.h"
 
 int FunNameCheck(char str[]) {
 	int flag = 0;
@@ -17,7 +18,7 @@ int FunNameCheck(char str[]) {
 	regcomp(&reg, pattern, cflags);
 	//执行正则表达式和缓存的比较
 	status = regexec(&reg, buf, nmatch, pmatch, 0);
-	if (status == REG_NOMATCH){
+	if (status == REG_NOMATCH) {
 		//printf("No match\n");
 		flag = 0;
 	}
@@ -30,20 +31,51 @@ int FunNameCheck(char str[]) {
 }
 
 void FunGetFromFile(char FileName[]) {
-	
+
 	FILE* fp1 = fopen(FileName, "r");
 	FILE* fp2 = fopen(strcat(FileName, "_FunName.txt"), "w");
 	char FunName[100] = { 0 };
+	extern int g_FunNum;
 
-	if (fp1 ) {
+	if (fp1) {
 		while ((fgets(FunName, 100, fp1)) != NULL) {
 			//printf("行内容获取成功！\n");
 			//printf("%s\n", FunName);
 			if (FunNameCheck(FunName)) {
 				//printf("%s\n", FunName);
+				g_FunNum++;
+				fprintf(fp2, "%5d-", g_FunNum);
 				fputs(FunName, fp2);
 			}
 		}
+		fclose(fp1);
+		fclose(fp2);
+	}
+	else {
+		printf("Can't open this file!");
+	}
+}
+
+void FunGetFromFile_2(char FileName[],FILE* fp) {
+
+	FILE* fp1 = fopen(FileName, "r");
+	char FunName[100] = { 0 };
+	extern int g_FunNum;
+
+	if (fp1) {
+		while ((fgets(FunName, 100, fp1)) != NULL) {
+			//printf("行内容获取成功！\n");
+			//printf("%s\n", FunName);
+			if (FunNameCheck(FunName)) {
+				//printf("%s\n", FunName);
+				g_FunNum++;
+				fprintf(fp, "%5d-", g_FunNum);
+				//printf("%5d-", g_FunNum);
+				fputs(FunName, fp);
+				//printf("%s\n", FunName);
+			}
+		}
+		fclose(fp1);
 	}
 	else {
 		printf("Can't open this file!");
@@ -54,14 +86,26 @@ void FunGetFromList(char FilePath[]) {
 
 	DIR* dp = opendir(FilePath);
 	struct dirent* entry;
-	char** FileName;
+	char *FileName;
+	int len = 0;
+	FILE* fp = fopen(strcat(FilePath, "_FunName.txt"), "w");
 
 	if (dp) {
 		while ((entry = readdir(dp)) != nullptr) {
-			printf("%s\n", entry->d_name);
-			*FileName = entry->d_name;
-			
+			//printf("%s\n", entry->d_name);
+			FileName = entry->d_name;
+			//printf("%s\n", FileName);
+			len = strlen(FileName);
+			//printf("%d\n", len);
+			if (FileName[len - 1] == 'c') {
+				//printf("这是C文件！\n");
+				fprintf(fp, FileName);
+				fprintf(fp, "\n");
+				FunGetFromFile_2(FileName,fp);
+			}
 		}
+		fclose(fp);
+		closedir(dp);
 	}
 	else {
 		printf("打开目录失败！\n");
@@ -69,6 +113,8 @@ void FunGetFromList(char FilePath[]) {
 
 
 }
+
+int g_FunNum = 0;
 
 int main() {
 
@@ -85,14 +131,18 @@ int main() {
 	//printf("%s\n", UserParameter);
 
 	switch (hash_str_to_uint32(UserCmd)) {
-		case hash_str_to_uint32("-file"):
-			FunGetFromFile(UserParameter);
-		case hash_str_to_uint32("-dir"):
-			FunGetFromList(UserParameter);
-		case hash_str_to_uint32("-tree"):
-			break;
-		default:
-			printf("Un!");
+	case hash_str_to_uint32("-file"):
+		FunGetFromFile(UserParameter);
+		printf("函数名获取成功！\n");
+		break;
+	case hash_str_to_uint32("-dir"):
+		FunGetFromList(UserParameter);
+		printf("函数名获取成功！\n");
+		break;
+	case hash_str_to_uint32("-tree"):
+		break;
+	default:
+		printf("Un!");
 	}
 
 	return 0;
