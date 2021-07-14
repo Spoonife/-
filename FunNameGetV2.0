@@ -1,0 +1,140 @@
+#include<stdio.h>
+#include<string.h>
+#include<iostream>
+#include"choose.cpp"
+#include"regex.h"
+#include"dirent.h"
+
+int FunNameCheck(char* str) {
+
+	int res = 0;
+	int status, i;
+	int cflags = REG_EXTENDED;
+	regmatch_t pmatch[1];
+	const size_t nmatch = 1;
+	regex_t reg;
+	const char* pattern = "^(\\w+)\\s+[\\*,&]*\\s*(\\w+)\\s*\\(\.*$";
+	char* buf = str;
+
+	//编译正则模式
+	regcomp(&reg, pattern, cflags);
+	//执行正则表达式和缓存的比较
+	status = regexec(&reg, buf, nmatch, pmatch, 0);
+	if (status == REG_NOMATCH) {
+		//printf("No match\n");
+		res = 0;
+	}
+	else {
+		//printf("比较成功\n");
+		res = 1;
+	}
+	regfree(&reg);
+	return res;
+}
+
+int FunGetFromFile(char* FileName, FILE* fp2) {
+
+	int res = 0;
+	FILE* fp1 = fopen(FileName, "r");
+	//printf("%s\n", FileName);
+
+	char FunName[100] = { 0 };//存函数名的数组
+	extern int g_FunNum;//记录函数名个数
+
+	if (fp1) {
+		//printf("文件打开成功！\n");
+		//printf("%s\n", fgets(FunName, 100, fp1));
+		while ((fgets(FunName, 100, fp1)) != NULL) {
+			//printf("行内容获取成功！\n");
+			//printf("%s\n", FunName);
+			if (FunNameCheck(FunName)) {
+				//printf("%s\n", FunName);
+				g_FunNum++;
+				fprintf(fp2, "%5d-", g_FunNum);
+				//printf("%5d-", g_FunNum);
+				fputs(FunName, fp2);
+				//printf("%s\n", FunName);
+			}
+		}
+		fclose(fp1);
+		res = 1;
+	}
+	else {
+		printf("Can't open this file!");
+		res = 0;
+	}
+	return res;
+}
+
+int FunGetFromList(char* FilePath) {
+
+	int res = 0;
+	DIR* dp = opendir(FilePath);
+	struct dirent* entry;
+	char* FileName;
+	int len = 0;
+	FILE* fp = fopen(strcat(FilePath, "_FunName.txt"), "w");
+
+	if (dp) {
+		while ((entry = readdir(dp)) != nullptr) {
+			//printf("%s\n", entry->d_name);
+			FileName = entry->d_name;
+			//printf("%s\n", FileName);
+			len = strlen(FileName);
+			//printf("%d\n", len);
+			if (FileName[len - 1] == 'c') {
+				//printf("这是C文件！\n");
+				//printf("%s\n", FileName);
+				fprintf(fp, FileName);
+				fprintf(fp, "\n");
+				//fclose(fp);
+				FunGetFromFile(FileName, fp);
+				//fp = fopen(FilePath, "w");
+			}
+		}
+		closedir(dp);
+		fclose(fp);
+		res = 1;
+	}
+	else {
+		printf("打开目录失败！\n");
+		res = 0;
+	}
+	return res;
+}
+
+int g_FunNum = 0;
+
+int main(int argc, char* argv[]) {
+
+	char newFileName[100] = { 0 };
+	strcpy(newFileName, argv[2]);
+	FILE* fp = fopen(newFileName, "w");
+
+	switch (hash_str_to_uint32(argv[1])) {
+	case hash_str_to_uint32("-file"):
+		strcat(newFileName, "_FunName.txt");
+		printf("%s\n", newFileName);
+		if (FunGetFromFile(argv[2], fp)) {
+			printf("函数名获取成功！\n");
+		}
+		else {
+			printf("文件打开失败！\n");
+		}
+		break;
+	case hash_str_to_uint32("-dir"):
+		if (FunGetFromList(argv[2])) {
+			printf("函数名获取成功！\n");
+		}
+		else {
+			printf("目录打开失败！\n");
+		}
+		break;
+	case hash_str_to_uint32("-tree"):
+		break;
+	default:
+		printf("Un!");
+	}
+	fclose(fp);
+	return 0;
+}
