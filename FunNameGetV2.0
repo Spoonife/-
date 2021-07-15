@@ -6,6 +6,91 @@
 #include"dirent.h"
 #define N 1024
 
+int UserCmdCheck(char* str) {
+
+	int res = 0;
+	char* userCmd;
+	userCmd = (char*)malloc(sizeof(char) * N);
+	strcpy(userCmd, str);
+
+	switch(hash_str_to_uint32(userCmd)) {
+	case hash_str_to_uint32("-file"): 
+		res = 1;
+		break;
+	case hash_str_to_uint32("-dir"):
+		res = 2;
+		break;
+	case hash_str_to_uint32("-tree"):
+		res = 3;
+		break;
+	default:
+		res = 0;
+	}
+	free(userCmd);
+	return res;
+}
+
+int UserCmdCheckFile(char* str) {
+
+	int res = 0;
+	int len = 0;
+	char* userParameter;
+	userParameter = (char*)malloc(sizeof(char) * N);
+	strcpy(userParameter, str);
+	len = strlen(userParameter);
+	FILE* fp = fopen(userParameter, "r");
+
+	//文件存在且是.c文件时，返回1
+	if ((fp)&&(userParameter[len - 1] == 'c')) {
+		res = 1;
+		fclose(fp);
+	}
+	else {
+		res = 0;
+	}
+	free(userParameter);
+	return res;
+}
+
+int UserCmdCheckLsit(char* str) {
+
+	int res = 0;
+	int flag = 0;
+	char* userParameter;
+	char* fileName;
+	fileName = (char*)malloc(sizeof(char) * N);
+	userParameter = (char*)malloc(sizeof(char) * N);
+	strcpy(userParameter, str);
+	DIR* dp = opendir(userParameter);
+	struct dirent* entry;
+
+	//目录是否存在
+	if (dp) {
+		while ((entry = readdir(dp)) != nullptr) {
+			//拷贝文件名
+			strcpy(fileName, entry->d_name);
+			//目录下有无.c文件
+			if (UserCmdCheckFile(fileName)) {
+				flag++;
+			}
+		}
+		closedir(dp);
+		free(fileName);
+		//目录存在且目录下有.c文件时，返回1
+		if (flag) {
+			res = 1;
+		}
+		else {
+			res = 0;
+		}
+	}
+	else {
+		res = 0;
+	}
+	free(userParameter);
+	return res;
+}
+
 int FunNameCheck(char* str) {
 
 	int res = 0;
@@ -33,14 +118,17 @@ int FunNameCheck(char* str) {
 	return res;
 }
 
-int FunGetFromFile(char* fileName, FILE* fp2) {
+int FunGetFromFile(char* str, FILE* fp2) {
 
 	int res = 0;
-	FILE* fp1 = fopen(fileName, "r");
-	//printf("%s\n", FileName);
-	char *funName;//存函数名的数组
+	//printf("%s\n", str);
+	char* funName;//存函数名的数组
+	char* fileName;
+	fileName = (char*)malloc(sizeof(char) * N);
 	funName = (char*)malloc(sizeof(char) * N);
+	strcpy(fileName, str);
 	extern int g_funNum;//记录函数名个数
+	FILE* fp1 = fopen(fileName, "r");
 
 	if (fp1) {
 		//printf("文件打开成功！\n");
@@ -61,7 +149,6 @@ int FunGetFromFile(char* fileName, FILE* fp2) {
 		res = 1;
 	}
 	else {
-		printf("文件打开失败！请输入正确的文件名(如：main.c)\n");
 		res = 0;
 	}
 	free(funName);
@@ -71,31 +158,30 @@ int FunGetFromFile(char* fileName, FILE* fp2) {
 int FunGetFromList(char* filePath) {
 
 	int res = 0;
-	int len = 0;
+	char* userParameter;
 	char* newFileName;
 	char* fileName;
 	newFileName = (char*)malloc(sizeof(char) * N);
 	fileName = (char*)malloc(sizeof(char) * N);
-	DIR* dp = opendir(filePath);
-	struct dirent* entry;
-
+	userParameter = (char*)malloc(sizeof(char) * N);
 	strcpy(newFileName, filePath);
 	strcat(newFileName, "_FunName.txt");
+	strcpy(userParameter, filePath);
+	DIR* dp = opendir(userParameter);
+	struct dirent* entry;
 	FILE* fp = fopen(newFileName, "w");
+
 	if (dp) {
 		while ((entry = readdir(dp)) != nullptr) {
 			strcpy(fileName, entry->d_name);
 			//printf("%s\n", fileName);
-			len = strlen(fileName);
 			//printf("%d\n", len);
-			if (fileName[len - 1] == 'c') {
+			if (UserCmdCheckFile(fileName)) {
 				//printf("这是C文件！\n");
 				//printf("%s\n", FileName);
 				fprintf(fp, fileName);
 				fprintf(fp, "\n");
-				//fclose(fp);
 				FunGetFromFile(fileName, fp);
-				//fp = fopen(FilePath, "w");
 			}
 		}
 		closedir(dp);
@@ -103,11 +189,11 @@ int FunGetFromList(char* filePath) {
 		res = 1;
 	}
 	else {
-		printf("打开目录失败，请输入有效目录！(如：C:\\Users\Spoonife)\n");
 		res = 0;
 	}
 	fclose(fp);
 	free(newFileName);
+	free(userParameter);
 	return res;
 }
 
@@ -118,44 +204,61 @@ int main(int argc, char* argv[]) {
 	char *userCmd;
 	char *userParameter;
 	char newFileName[100] = { 0 };
-	
+	int num;
+
 	userCmd = (char*)malloc(sizeof(char) * N);
 	userParameter = (char*)malloc(sizeof(char) * N);
-//	printf("%s\n", newFileName);
-	strcpy(userCmd, argv[1]);
-	strcpy(userParameter, argv[2]);
-	strcpy(newFileName, userParameter);
-
-	switch (hash_str_to_uint32(userCmd)) {
-	case hash_str_to_uint32("-file"): {
-		strcat(newFileName, "_FunName.txt");
-		//printf("%s\n", newFileName);
-		FILE* fp = fopen(newFileName, "w");
-		if (FunGetFromFile(userParameter, fp)) {
-			printf("函数名获取成功！\n");
+	
+	if (argc >= 2) {
+		strcpy(userCmd, argv[1]);
+		num = UserCmdCheck(userCmd);
+		switch (num) {
+		case 0:
+			printf("请输入合法命令！\n");
+			printf("如：-file <filename>\n");
+			printf("如：-dir <dirname>\n");
+			break;
+		case 1: {
+			for (int i = 2; i < argc; i++) {
+				strcpy(userParameter, argv[i]);
+				if (UserCmdCheckFile(userParameter)) {
+					strcpy(newFileName, userParameter);
+					strcat(newFileName, "_FunName.txt");
+					FILE* fp = fopen(newFileName, "w");
+					FunGetFromFile(userParameter, fp);
+					fclose(fp);
+				}
+				else {
+					printf("请输入正确的.c文件名！\n");
+				}
+			}
+			free(userParameter);
+			break;
 		}
-		else {
-			printf("文件打开失败！请输入正确的文件名(如：main.c)\n");
+		case 2: {
+			for (int i = 2; i < argc; i++) {
+				strcpy(userParameter, argv[i]);
+				if (UserCmdCheckLsit(userParameter)) {
+					FunGetFromList(userParameter);
+				}
+				else {
+					printf("请输入正确的目录名！\n");
+				}
+			}
+			free(userParameter);
+			break;
 		}
-		fclose(fp);
-		break;
+		default:
+			printf("请输入合法命令！\n");
+			printf("如：-file <filename>\n");
+			printf("如：-dir <dirname>\n");
+		}
+		free(userCmd);
 	}
-	case hash_str_to_uint32("-dir"):
-		if (FunGetFromList(userParameter)) {
-			printf("函数名获取成功！\n");
-		}
-		else {
-			printf("打开目录失败，请输入有效目录！(如：C:\\Users\Spoonife)\n");
-		}
-		break;
-	case hash_str_to_uint32("-tree"):
-		break;
-	default:
-		printf("请输入合法命令及参数！\n");
+	else {
+		printf("请输入正确的命令及参数！\n");
 		printf("如：-file <filename>\n");
 		printf("如：-dir <dirname>\n");
 	}
-	free(userCmd);
-	free(userParameter);
 	return 0;
 }
