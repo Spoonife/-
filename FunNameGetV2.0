@@ -4,11 +4,12 @@
 #include"choose.cpp"
 #include"regex.h"
 #include"dirent.h"
+#define N 1024
 
 int FunNameCheck(char* str) {
 
 	int res = 0;
-	int status, i;
+	int status;
 	int cflags = REG_EXTENDED;
 	regmatch_t pmatch[1];
 	const size_t nmatch = 1;
@@ -32,27 +33,27 @@ int FunNameCheck(char* str) {
 	return res;
 }
 
-int FunGetFromFile(char* FileName, FILE* fp2) {
+int FunGetFromFile(char* fileName, FILE* fp2) {
 
 	int res = 0;
-	FILE* fp1 = fopen(FileName, "r");
+	FILE* fp1 = fopen(fileName, "r");
 	//printf("%s\n", FileName);
-
-	char FunName[100] = { 0 };//存函数名的数组
-	extern int g_FunNum;//记录函数名个数
+	char *funName;//存函数名的数组
+	funName = (char*)malloc(sizeof(char) * N);
+	extern int g_funNum;//记录函数名个数
 
 	if (fp1) {
 		//printf("文件打开成功！\n");
 		//printf("%s\n", fgets(FunName, 100, fp1));
-		while ((fgets(FunName, 100, fp1)) != NULL) {
+		while ((fgets(funName, 100, fp1)) != NULL) {
 			//printf("行内容获取成功！\n");
 			//printf("%s\n", FunName);
-			if (FunNameCheck(FunName)) {
+			if (FunNameCheck(funName)) {
 				//printf("%s\n", FunName);
-				g_FunNum++;
-				fprintf(fp2, "%5d-", g_FunNum);
+				g_funNum++;
+				fprintf(fp2, "%5d-", g_funNum);
 				//printf("%5d-", g_FunNum);
-				fputs(FunName, fp2);
+				fputs(funName, fp2);
 				//printf("%s\n", FunName);
 			}
 		}
@@ -60,81 +61,101 @@ int FunGetFromFile(char* FileName, FILE* fp2) {
 		res = 1;
 	}
 	else {
-		printf("Can't open this file!");
+		printf("文件打开失败！请输入正确的文件名(如：main.c)\n");
 		res = 0;
 	}
+	free(funName);
 	return res;
 }
 
-int FunGetFromList(char* FilePath) {
+int FunGetFromList(char* filePath) {
 
 	int res = 0;
-	DIR* dp = opendir(FilePath);
-	struct dirent* entry;
-	char* FileName;
 	int len = 0;
-	FILE* fp = fopen(strcat(FilePath, "_FunName.txt"), "w");
+	char* newFileName;
+	char* fileName;
+	newFileName = (char*)malloc(sizeof(char) * N);
+	fileName = (char*)malloc(sizeof(char) * N);
+	DIR* dp = opendir(filePath);
+	struct dirent* entry;
 
+	strcpy(newFileName, filePath);
+	strcat(newFileName, "_FunName.txt");
+	FILE* fp = fopen(newFileName, "w");
 	if (dp) {
 		while ((entry = readdir(dp)) != nullptr) {
-			//printf("%s\n", entry->d_name);
-			FileName = entry->d_name;
-			//printf("%s\n", FileName);
-			len = strlen(FileName);
+			strcpy(fileName, entry->d_name);
+			//printf("%s\n", fileName);
+			len = strlen(fileName);
 			//printf("%d\n", len);
-			if (FileName[len - 1] == 'c') {
+			if (fileName[len - 1] == 'c') {
 				//printf("这是C文件！\n");
 				//printf("%s\n", FileName);
-				fprintf(fp, FileName);
+				fprintf(fp, fileName);
 				fprintf(fp, "\n");
 				//fclose(fp);
-				FunGetFromFile(FileName, fp);
+				FunGetFromFile(fileName, fp);
 				//fp = fopen(FilePath, "w");
 			}
 		}
 		closedir(dp);
-		fclose(fp);
+		free(fileName);
 		res = 1;
 	}
 	else {
-		printf("打开目录失败！\n");
+		printf("打开目录失败，请输入有效目录！(如：C:\\Users\Spoonife)\n");
 		res = 0;
 	}
+	fclose(fp);
+	free(newFileName);
 	return res;
 }
 
-int g_FunNum = 0;
+int g_funNum = 0;
 
 int main(int argc, char* argv[]) {
 
+	char *userCmd;
+	char *userParameter;
 	char newFileName[100] = { 0 };
-	strcpy(newFileName, argv[2]);
-	FILE* fp = fopen(newFileName, "w");
+	
+	userCmd = (char*)malloc(sizeof(char) * N);
+	userParameter = (char*)malloc(sizeof(char) * N);
+//	printf("%s\n", newFileName);
+	strcpy(userCmd, argv[1]);
+	strcpy(userParameter, argv[2]);
+	strcpy(newFileName, userParameter);
 
-	switch (hash_str_to_uint32(argv[1])) {
-	case hash_str_to_uint32("-file"):
+	switch (hash_str_to_uint32(userCmd)) {
+	case hash_str_to_uint32("-file"): {
 		strcat(newFileName, "_FunName.txt");
-		printf("%s\n", newFileName);
-		if (FunGetFromFile(argv[2], fp)) {
+		//printf("%s\n", newFileName);
+		FILE* fp = fopen(newFileName, "w");
+		if (FunGetFromFile(userParameter, fp)) {
 			printf("函数名获取成功！\n");
 		}
 		else {
-			printf("文件打开失败！\n");
+			printf("文件打开失败！请输入正确的文件名(如：main.c)\n");
 		}
+		fclose(fp);
 		break;
+	}
 	case hash_str_to_uint32("-dir"):
-		if (FunGetFromList(argv[2])) {
+		if (FunGetFromList(userParameter)) {
 			printf("函数名获取成功！\n");
 		}
 		else {
-			printf("目录打开失败！\n");
+			printf("打开目录失败，请输入有效目录！(如：C:\\Users\Spoonife)\n");
 		}
 		break;
 	case hash_str_to_uint32("-tree"):
 		break;
 	default:
-		printf("Un!");
+		printf("请输入合法命令及参数！\n");
+		printf("如：-file <filename>\n");
+		printf("如：-dir <dirname>\n");
 	}
-	fclose(fp);
+	free(userCmd);
+	free(userParameter);
 	return 0;
 }
