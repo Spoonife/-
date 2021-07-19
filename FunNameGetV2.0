@@ -6,13 +6,6 @@
 #define N 1024
 #define M 100
 
-constexpr std::uint32_t hash_str_to_uint32(const char* data) {
-	std::uint32_t h(0);
-	for (int i = 0; data && ('\0' != data[i]); i++)
-		h = (h << 6) ^ (h >> 26) ^ data[i];
-	return h;
-}
-
 int UserCmdCheck(char* str) {
 
 	int res = 0;
@@ -21,17 +14,13 @@ int UserCmdCheck(char* str) {
 
 	if (userCmd) {
 		strcpy(userCmd, str);
-		switch (hash_str_to_uint32(userCmd)) {
-		case hash_str_to_uint32("-file"):
+		if (strcmp(userCmd, "-file") == 0) {
 			res = 1;
-			break;
-		case hash_str_to_uint32("-dir"):
+		}
+		else if (strcmp(userCmd, "-dir") == 0) {
 			res = 2;
-			break;
-		case hash_str_to_uint32("-tree"):
-			res = 3;
-			break;
-		default:
+		}
+		else {
 			res = 0;
 		}
 		free(userCmd);
@@ -251,7 +240,9 @@ int main(int argc, char* argv[]) {
 	if (userCmd && userParameter) {
 		if (argc >= 2) {
 			strcpy(userCmd, argv[1]);
+			//printf("```````%s\n", userCmd);
 			num = UserCmdCheck(userCmd);
+			//printf("%d\n", num);
 			switch (num) {
 			case 1: {
 				for (int i = 2; i < argc; i++) {
