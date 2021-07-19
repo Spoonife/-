@@ -6,19 +6,24 @@
 #define N 1024
 #define M 100
 
+//检查用户命令
 int UserCmdCheck(char* str) {
-
 	int res = 0;
-	char* userCmd = nullptr;
+	char* userCmd = nullptr;//存用户命令
 	userCmd = (char*)malloc(sizeof(char) * N);
 
 	if (userCmd) {
+		memset(userCmd, 0, sizeof(userCmd));
 		strcpy(userCmd, str);
+		//判断用户命令为-file还是-dir
 		if (strcmp(userCmd, "-file") == 0) {
 			res = 1;
 		}
 		else if (strcmp(userCmd, "-dir") == 0) {
 			res = 2;
+		}
+		else if (strcmp(userCmd, "-help") == 0) {
+			res = 3;
 		}
 		else {
 			res = 0;
@@ -32,22 +37,27 @@ int UserCmdCheck(char* str) {
 	return res;
 }
 
+//检查用户参数是否适用-file
 int UserCmdCheckFile(char* str) {
-
 	int res = 0;
 	int len = 0;
-	char* userParameter = nullptr;
+	char* userParameter = nullptr;//存用户参数
 	userParameter = (char*)malloc(sizeof(char) * N);
+
 	if (userParameter) {
+		memset(userParameter, '0', sizeof(userParameter));
 		strcpy(userParameter, str);
-		len = strlen(userParameter);
+		len = strlen(userParameter);//获取文件名长度
 		FILE* fp = fopen(userParameter, "r");
-		//文件存在且是.c文件时，返回1
-		if ((fp) && (userParameter[len - 2] == '.') && (userParameter[len - 1] == 'c')) {
+		//比较文件名的最后两个字符是否为.c，文件存在且是.c文件时，返回1
+		if ((fp) && ('.' == userParameter[len - 2]) && ('c' == userParameter[len - 1])) {
 			res = 1;
 			fclose(fp);
 		}
 		else {
+			if (fp) {
+				fclose(fp);
+			}
 			res = 0;
 		}
 		free(userParameter);
@@ -59,40 +69,19 @@ int UserCmdCheckFile(char* str) {
 	return res;
 }
 
+//检查用户参数是否适用-dir
 int UserCmdCheckLsit(char* str) {
-
 	int res = 0;
-	int flag = 0;
 	char* filePath = nullptr;
-	char* fileName = nullptr;
-	fileName = (char*)malloc(sizeof(char) * N);
 	filePath = (char*)malloc(sizeof(char) * N);
 
-	if (filePath && fileName) {
+	if (filePath) {
+		memset(filePath, 0, sizeof(filePath));
 		strcpy(filePath, str);
 		DIR* dp = opendir(filePath);
-		struct dirent* entry;
-
 		//目录是否存在
 		if (dp) {
-			while ((entry = readdir(dp)) != nullptr) {
-				//拷贝文件名
-				strcpy(fileName, entry->d_name);
-				//目录下有无.c文件
-				if (UserCmdCheckFile(fileName)) {
-					flag++;
-				}
-			}
-			closedir(dp);
-			free(fileName);
-			fileName = nullptr;
-			//目录存在且目录下有.c文件时，返回1
-			if (flag) {
-				res = 1;
-			}
-			else {
-				res = 0;
-			}
+			res = 1;
 		}
 		else {
 			res = 0;
@@ -106,15 +95,15 @@ int UserCmdCheckLsit(char* str) {
 	return res;
 }
 
+//函数名判断
 int FunNameCheck(char* str) {
-
 	int res = 0;
 	int status = 0;
 	int cflags = REG_EXTENDED;
 	regmatch_t pmatch[1];
 	regex_t reg;
 	const size_t nmatch = 1;
-	const char* pattern = "^(\\w+)\\s+[\\*,&]*\\s*(\\w+)\\s*\\(\.*$";
+	const char* pattern = "^(\\w+)\\s+[\*,&]*\\s*(\\w+)\\s*\\(\.*$";
 	char* buf = str;
 
 	//编译正则模式
@@ -133,31 +122,28 @@ int FunNameCheck(char* str) {
 	return res;
 }
 
+//从文件中提取行内容
 int FunGetFromFile(char* str, FILE* fp2) {
-
 	int res = 0;
 	//printf("%s\n", str);
 	char* funName = nullptr;//存函数名的数组
 	char* fileName = nullptr;
 	funName = (char*)malloc(sizeof(char) * N);
 	fileName = (char*)malloc(sizeof(char) * N);
+	memset(funName, 0, sizeof(funName));
+	memset(fileName, 0, sizeof(funName));
 	strcpy(fileName, str);
 	extern int g_funNum;//记录函数名个数
 	FILE* fp1 = fopen(fileName, "r");
-
 	if (fp1) {
-		//printf("文件打开成功！\n");
-		//printf("%s\n", fgets(FunName, 100, fp1));
+		//读取文件中每一行的内容
 		while ((fgets(funName, M, fp1)) != NULL) {
-			//printf("行内容获取成功！\n");
-			//printf("%s\n", FunName);
+			//函数名判断
 			if (FunNameCheck(funName)) {
-				//printf("%s\n", FunName);
 				g_funNum++;
+				//格式化输出到文件中
 				fprintf(fp2, "%5d-", g_funNum);
-				//printf("%5d-", g_FunNum);
 				fputs(funName, fp2);
-				//printf("%s\n", FunName);
 			}
 		}
 		fclose(fp1);
@@ -173,6 +159,7 @@ int FunGetFromFile(char* str, FILE* fp2) {
 	return res;
 }
 
+//从目录下的文件中提取行内容
 int FunGetFromList(char* filePath) {
 
 	int res = 0;
@@ -184,27 +171,33 @@ int FunGetFromList(char* filePath) {
 	fileName = (char*)malloc(sizeof(char) * N);
 
 	if (newFileName && fileName && userParameter) {
+		memset(userParameter, 0, sizeof(userParameter));
+		memset(newFileName, 0, sizeof(newFileName));
+		memset(fileName, 0, sizeof(fileName));
+		//拼凑新文件名
 		strcpy(newFileName, filePath);
 		strcat(newFileName, "_FunName.txt");
 		strcpy(userParameter, filePath);
 		DIR* dp = opendir(userParameter);
 		struct dirent* entry;
 		FILE* fp = fopen(newFileName, "w");
-		if (dp) {
+		if (dp && fp) {
+			//读取目录下文件
 			while ((entry = readdir(dp)) != nullptr) {	
 				strcpy(fileName, userParameter);
 				strcpy(fileName,"\\");
+				//读取文件名
 				strcpy(fileName, entry->d_name);
-				//printf("%s\n", fileName);
-				//printf("%d\n", len);
+				//.c文件判断
 				if (UserCmdCheckFile(fileName)) {
-					//printf("这是C文件！\n");
-					//printf("%s\n", FileName);
+					//输出文件名
 					fprintf(fp, fileName);
 					fprintf(fp, "\n");
+					//从文件中提取函数名
 					FunGetFromFile(fileName, fp);
 				}
 			}
+			fclose(fp);
 			closedir(dp);
 			free(fileName);
 			fileName = nullptr;
@@ -213,7 +206,6 @@ int FunGetFromList(char* filePath) {
 		else {
 			res = 0;
 		}
-		fclose(fp);
 		free(newFileName);
 		free(userParameter);
 		newFileName = nullptr;
@@ -238,56 +230,67 @@ int main(int argc, char* argv[]) {
 	userParameter = (char*)malloc(sizeof(char) * N);
 	
 	if (userCmd && userParameter) {
-		if (argc >= 2) {
-			strcpy(userCmd, argv[1]);
-			//printf("```````%s\n", userCmd);
-			num = UserCmdCheck(userCmd);
-			//printf("%d\n", num);
-			switch (num) {
-			case 1: {
-				for (int i = 2; i < argc; i++) {
-					strcpy(userParameter, argv[i]);
-					if (UserCmdCheckFile(userParameter)) {
-						strcpy(newFileName, userParameter);
-						strcat(newFileName, "_FunName.txt");
-						FILE* fp = fopen(newFileName, "w");
-						FunGetFromFile(userParameter, fp);
-						g_funNum = 0;
-						fclose(fp);
-					}
-					else {
-						printf("请输入正确的.c文件名！\n");
-					}
+		memset(userCmd, 0, sizeof(userCmd));
+		memset(userParameter, 0, sizeof(userParameter));
+		strcpy(userCmd, argv[1]);
+		//记录命令判断的结果
+		num = UserCmdCheck(userCmd);
+		//printf("%d\n", num);
+		switch (num) {
+		//执行-file命令
+		case 1: {
+			for (int i = 2; i < argc; i++) {
+				strcpy(userParameter, argv[i]);
+				//判断用户的每一个参数是否合法
+				if (UserCmdCheckFile(userParameter)) {
+					strcpy(newFileName, userParameter);
+					//拼接新文件名
+					strcat(newFileName, "_FunName.txt");
+					FILE* fp = fopen(newFileName, "w");
+					//从文件中提取函数名
+					FunGetFromFile(userParameter, fp);
+					//重置函数名个数
+					g_funNum = 0;
+					fclose(fp);
 				}
-				free(userParameter);
-				break;
-			}
-			case 2: {
-				for (int i = 2; i < argc; i++) {
-					strcpy(userParameter, argv[i]);
-					if (UserCmdCheckLsit(userParameter)) {
-						FunGetFromList(userParameter);
-					}
-					else {
-						printf("请输入正确的目录名！\n");
-					}
+				else {
+					printf("请输入正确的.c文件名！\n");
 				}
-				free(userParameter);
-				userParameter = nullptr;
-				break;
 			}
-			default:
-				printf("请输入合法命令！\n");
-				printf("如：-file <filename>\n");
-				printf("如：-dir <dirname>\n");
-			}
-			free(userCmd);
-			userCmd = nullptr;
+			free(userParameter);
+			break;
 		}
-		else {
-			printf("请输入正确的命令及参数！\n");
+		//执行-dir命令
+		case 2: {
+			for (int i = 2; i < argc; i++) {
+				strcpy(userParameter, argv[i]);
+				if (UserCmdCheckLsit(userParameter)) {
+					FunGetFromList(userParameter);
+				}
+				else {
+					printf("请输入正确的目录名！\n");
+				}
+			}
+			free(userParameter);
+			userParameter = nullptr;
+			break;
+		}
+		//执行-help命令
+		case 3: {
+			printf("-file    提取.c文件中的函数名\n");
+			printf("         -file <filename1> <filename2> ...\n");
+			printf("-dir	 提取目录下.c文件中的函数名\n");
+			printf("         -dir  <filelist1> <filelist2> ...\n");
+			printf("-help	 获取指令帮助\n");
+			break;
+		}
+		default: {
+			printf("请输入合法命令！\n");
 			printf("如：-file <filename>\n");
 			printf("如：-dir <dirname>\n");
+		}
+		free(userCmd);
+		userCmd = nullptr;
 		}
 	}
 	else {
