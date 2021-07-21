@@ -1,11 +1,13 @@
 #include<stdio.h>
 #include<string.h>
+#include<stdlib.h>
 #include<iostream>
 #include"regex.h"
 #include"dirent.h"
 #define N 1024
 #define M 100
 
+//申请动态内存
 char* UserSpaceGet(char* str) {
 	str = (char*)malloc(sizeof(char) * N);
 	if (str) {
@@ -17,6 +19,7 @@ char* UserSpaceGet(char* str) {
 	return str;
 }
 
+//处理文件名后缀
 char* FileNameClean(char* str,int i) {
 	int len = 0;
 	//int i = 0;
@@ -24,11 +27,13 @@ char* FileNameClean(char* str,int i) {
 	//char newFileName[100] = { 0 };
 
 	len = strlen(str);
+	//去掉文件名的最后两个字符
 	strncpy(fileName, str, len - i);
 	//printf("%s\n", fileName);
 	return fileName;
 }
 
+//处理目录名
 char* ListNameClaen(char* str) {
 	char dirName[100] = { 0 };
 	char fileName[100] = { 0 };
@@ -37,18 +42,28 @@ char* ListNameClaen(char* str) {
 	//strcpy(dirName, str);
 	len = strlen(str);
 	//printf("%s\n", dirName);
-	strncpy(dirName, str, len - 1);
-	//printf("%s\n", dirName);
-	while (dirName[len] != '\\') {
-		//printf("%c\n", dirName[len]);
-		len--;
-		i++;
+	if ('\\' == str[len - 1] &&  '\\' == str[len - 2]) {
+		strcpy(dirName, str);
+		strncat(dirName, str, 1);
+		//printf("%s\n", dirName);
 	}
-	len = strlen(dirName);
-	strncpy(fileName, dirName + len - i + 1, len);
-	fileName[i + 1] = { 0 };
-	strcat(dirName, fileName);
-	//printf("%s\n", dirName);
+	else {
+		strncpy(dirName, str, len - 1);
+		//printf("%s\n", dirName);
+		dirName[len] = { 0 };
+		len = strlen(dirName);
+		while (dirName[len - 1] != '\\') {
+			//printf("%c\n", dirName[len - 1]);
+			len--;
+			i++;
+		}
+		len = strlen(dirName);
+		//printf("%s\n", dirName);
+		strncpy(fileName, dirName + len - i - 1, len);
+		fileName[i + 1] = { 0 };
+		strcat(dirName, fileName);
+		//printf("%s\n", dirName);
+	}
 	return dirName;
 }
 
@@ -318,8 +333,7 @@ int main(int argc, char* argv[]) {
 				strcpy(userParameter, argv[i]);
 				if (UserCmdCheckLsit(userParameter)) {
 					len = strlen(userParameter);
-					if (userParameter[len] != '\\') {
-
+					if (userParameter[len - 1] != '\\' || ':' == userParameter[len - 2]) {
 						strcat(userParameter, "\\");
 					}
 					//printf("%s\n", userParameter);
