@@ -24,15 +24,15 @@ char* FileNameClean(char* str,int i) {
 	int len = 0;
 	char fileName[100] = { 0 };
 	len = strlen(str);
-	//去掉文件名的最后两个字符
+	//去掉文件名的最后i个字符
 	strncpy(fileName, str, len - i);
 	return fileName;
 }
 
 //处理目录名
 char* ListNameClaen(char* str) {
-	char dirName[100] = { 0 };
-	char fileName[100] = { 0 };
+	char dirName[N] = { 0 };
+	char fileName[N] = { 0 };
 	int len = 0;
 	int i = 0;
 	len = strlen(str);
@@ -160,7 +160,7 @@ int FunNameCheck(char* str) {
 	regmatch_t pmatch[1];
 	regex_t reg;
 	const size_t nmatch = 1;
-	const char* pattern = "^(\\w+)\\s+[\*,&]*\\s*(\\w+)\\s*\\(\.*$";
+	const char* pattern = "^(\\w+)[\*,&]*\\s+(\\w*)\\s*[\*,&]*\\s*[\*,&]*(\\w+)\\s*\\(\.*$";
 	char* buf = str;
 
 	//编译正则模式
@@ -182,6 +182,7 @@ int FunNameCheck(char* str) {
 //从文件中提取行内容
 int FunGetFromFile(char* str, FILE* fp2) {
 	int res = 0;
+	int len = 0;
 	char* funName = nullptr;//存函数名的数组
 	char* fileName = nullptr;
 	funName = (char*)malloc(sizeof(char) * N);
@@ -195,8 +196,10 @@ int FunGetFromFile(char* str, FILE* fp2) {
 	if (fp1) {
 		//读取文件中每一行的内容
 		while ((fgets(funName, M, fp1)) != NULL) {
+			len = strlen(funName);
+			//printf("%c\n", funName[len - 1]);
 			//函数名判断
-			if (FunNameCheck(funName)) {
+			if (';' != funName[len - 2] && FunNameCheck(funName)) {
 				g_funNum++;
 				//格式化输出到文件中
 				fprintf(fp2, "%5d-", g_funNum);
@@ -277,7 +280,7 @@ int FunGetFromList(char* filePath) {
 	return res;
 }
 
-int g_funNum = 0;
+int g_funNum = 0;//记录函数个数
 
 int main(int argc, char* argv[]) {
 
@@ -296,46 +299,48 @@ int main(int argc, char* argv[]) {
 		strcpy(userCmd, argv[1]);
 		//记录命令判断的结果
 		num = UserCmdCheck(userCmd);
-		//printf("%d\n", num);
 		switch (num) {
 		//执行-file命令
 		case 1: {
-			for (int i = 2; i < argc; i++) {
-				strcpy(userParameter, argv[i]);
-				//判断用户的每一个参数是否合法
-				if (UserCmdCheckFile(userParameter)) {
-					strcpy(newFileName, userParameter);
-					//拼接新文件名
-					strcpy(newFileName, FileNameClean(newFileName, 2));
-					strcat(newFileName, "_FunName.txt");
-					FILE* fp = fopen(newFileName, "w");
-					//从文件中提取函数名
-					FunGetFromFile(userParameter, fp);
-					//重置函数名个数
-					g_funNum = 0;
-					fclose(fp);
-				}
-				else {
-					printf("请输入正确的.c文件名！\n");
-				}
+			strcpy(userParameter, argv[2]);
+			for (int i = 3; i < argc; i++) {
+				strcat(userParameter, " ");
+				strcat(userParameter, argv[i]);
+			}
+			if (UserCmdCheckFile(userParameter)) {
+				//拼接新文件名
+				strcpy(newFileName, userParameter);
+				strcpy(newFileName, FileNameClean(newFileName, 2));
+				strcat(newFileName, "_FunName.txt");
+				FILE* fp = fopen(newFileName, "w");
+				//从文件中提取函数名
+				FunGetFromFile(userParameter, fp);
+				//重置函数名个数
+				g_funNum = 0;
+				fclose(fp);
+			}
+			else {
+				printf("请输入正确的.c文件名！\n");
 			}
 			free(userParameter);
 			break;
 		}
 		//执行-dir命令
 		case 2: {
-			for (int i = 2; i < argc; i++) {
-				strcpy(userParameter, argv[i]);
-				if (UserCmdCheckLsit(userParameter)) {
-					len = strlen(userParameter);
-					if ('\\' == userParameter[len - 1] || ':' == userParameter[len - 2]) {
-						strcat(userParameter, "\\");
-					}
-					FunGetFromList(userParameter);
+			strcpy(userParameter, argv[2]);
+			for (int i = 3; i < argc; i++) {
+				strcat(userParameter, " ");
+				strcat(userParameter, argv[i]);
+			}
+			if (UserCmdCheckLsit(userParameter)) {
+				len = strlen(userParameter);
+				if ('\\' != userParameter[len - 1] || ':' == userParameter[len - 2]) {
+					strcat(userParameter, "\\");
 				}
-				else {
-					printf("请输入正确的目录名！\n");
-				}
+				FunGetFromList(userParameter);
+			}
+			else {
+				printf("请输入正确的目录名！\n");
 			}
 			free(userParameter);
 			userParameter = nullptr;
@@ -344,13 +349,14 @@ int main(int argc, char* argv[]) {
 		//执行-help命令
 		case 3: {
 			printf("-file    提取.c文件中的函数名\n");
-			printf("         -file <filename1> <filename2> ...\n");
+			printf("         -file <filename1>\n");
 			printf("-dir	 提取目录下.c文件中的函数名\n");
-			printf("         -dir  <filelist1> <filelist2> ...\n");
+			printf("         -dir  <filelist1>\n");
 			printf("-help	 获取指令帮助\n");
 			break;
 		}
 		default: {
+			printf("无效指令！");
 			printf("请输入-help获取帮助！\n");
 		}
 		free(userCmd);
