@@ -56,7 +56,7 @@ void FunGetFromFile(char FileName[]) {
 	}
 }
 
-void FunGetFromFile_2(char FileName[],FILE* fp) {
+void FunGetFromFile_2(char FileName[], FILE* fp) {
 
 	FILE* fp1 = fopen(FileName, "r");
 	char FunName[100] = { 0 };
@@ -86,7 +86,7 @@ void FunGetFromList(char FilePath[]) {
 
 	DIR* dp = opendir(FilePath);
 	struct dirent* entry;
-	char *FileName;
+	char* FileName;
 	int len = 0;
 	FILE* fp = fopen(strcat(FilePath, "_FunName.txt"), "w");
 
@@ -101,7 +101,7 @@ void FunGetFromList(char FilePath[]) {
 				//printf("这是C文件！\n");
 				fprintf(fp, FileName);
 				fprintf(fp, "\n");
-				FunGetFromFile_2(FileName,fp);
+				FunGetFromFile_2(FileName, fp);
 			}
 		}
 		fclose(fp);
